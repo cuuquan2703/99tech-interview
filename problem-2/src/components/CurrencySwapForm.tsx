@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { TokenDisplay, TokenSelector } from './IconAssets';
+import { useSwapHistory } from '../contexts/SwapHistoryContext';
+import { TokenDisplay } from './IconAssets';
+import ArrowCollapse from '/arrowCollapse.svg';
 
 function CurrencySwapForm() {
     const { currencies, getExchangeRate, isLoading, error } = useCurrency();
+    const { addTransaction } = useSwapHistory();
     const [fromCurrency, setFromCurrency] = useState<string>('');
     const [toCurrency, setToCurrency] = useState<string>('');
     const [fromAmount, setFromAmount] = useState('');
     const [toAmount, setToAmount] = useState('');
     const [showFromDropdown, setShowFromDropdown] = useState(false);
     const [showToDropdown, setShowToDropdown] = useState(false);
+    const [isSwapLoading, setIsSwapLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
 
     // Set default currencies when data loads
     useEffect(() => {
@@ -50,6 +55,37 @@ function CurrencySwapForm() {
         return getExchangeRate(fromCurrency, toCurrency);
     };
 
+    const handleSwap = async () => {
+        if (!fromAmount || !toAmount || fromCurrency === toCurrency) return;
+        
+        setIsSwapLoading(true);
+        
+        // Mock backend interaction with 1 second loading
+        setTimeout(() => {
+            setIsSwapLoading(false);
+            setShowSuccess(true);
+            
+            // Add transaction to history
+            const currentRate = getCurrentRate();
+            if (currentRate) {
+                addTransaction({
+                    fromCurrency,
+                    toCurrency,
+                    fromAmount: parseFloat(fromAmount),
+                    toAmount: parseFloat(toAmount),
+                    exchangeRate: currentRate,
+                    commission: 2.48,
+                    status: 'completed'
+                });
+            }
+            
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+                setShowSuccess(false);
+            }, 3000);
+        }, 1000);
+    };
+
     const currentRate = getCurrentRate();
     const commission = 2.48;
     const fromCurrencyData = currencies.find(c => c.symbol === fromCurrency);
@@ -77,8 +113,11 @@ function CurrencySwapForm() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="min-h-screen flex p-6 justify-center">
             <div className="w-full max-w-md">
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-white mb-2">Swap</h1>
+                </div>
                 <div className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-700">
                     {/* From Currency */}
                     <div className="bg-gray-700 rounded-xl p-4 mb-4 relative">
@@ -87,9 +126,9 @@ function CurrencySwapForm() {
                                 <TokenDisplay token={fromCurrency} showPrice={true} />
                                 <button
                                     onClick={() => setShowFromDropdown(!showFromDropdown)}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white hover:scale-110 transition-colors"
                                 >
-                                    ▼
+                                    <img src={ArrowCollapse} alt="arrowCollapse" className="w-4 h-4" />
                                 </button>
                             </div>
                             <div className="text-right">
@@ -130,7 +169,7 @@ function CurrencySwapForm() {
                     <div className="flex justify-center mb-4">
                         <button
                             onClick={swapCurrencies}
-                            className="bg-gray-700 hover:bg-gray-600 p-3 rounded-full border border-gray-600 transition-colors"
+                            className="bg-gray-700 hover:bg-gray-600 p-3 rounded-full border border-gray-600 transition-all duration-50"
                         >
                             <div className="text-white text-lg">⇅</div>
                         </button>
@@ -143,9 +182,10 @@ function CurrencySwapForm() {
                                 <TokenDisplay token={toCurrency} showPrice={true} />
                                 <button
                                     onClick={() => setShowToDropdown(!showToDropdown)}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white hover:scale-110 transition-colors"
                                 >
-                                    ▼
+                                    <img src={ArrowCollapse} alt="arrowCollapse" className="w-4 h-4" />
+
                                 </button>
                             </div>
                             <div className="text-right">
@@ -182,7 +222,7 @@ function CurrencySwapForm() {
                     <div className="space-y-3 mb-6">
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Conversion Rate</span>
-                            <span className="text-white">
+                            <span className="text-gray-400">
                                 {currentRate 
                                     ? `1 ${fromCurrency} = ${currentRate.toFixed(6)} ${toCurrency}`
                                     : 'N/A'
@@ -191,24 +231,51 @@ function CurrencySwapForm() {
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Commission</span>
-                            <span className="text-white">${commission}</span>
+                            <span className="text-gray-400">${commission}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Total Expected After Fees</span>
-                            <span className="text-white">${totalExpected.toFixed(2)}</span>
+                            <span className="text-gray-400">${totalExpected.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-400">The Least You'll Get at 1.00% Slippage</span>
-                            <span className="text-white">${leastAmount.toFixed(2)}</span>
+                            <span className="text-gray-400">${leastAmount.toFixed(2)}</span>
                         </div>
                     </div>
 
-                    {/* Connect Wallet Button */}
-                    <button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl text-lg transition-colors">
-                        Connect Wallet
+
+                    {/* Swap Button */}
+                    <button 
+                        onClick={handleSwap}
+                        disabled={isSwapLoading || !fromAmount || !toAmount || fromCurrency === toCurrency}
+                        className={`w-full font-bold py-4 px-6 rounded-xl text-lg transition-colors ${
+                            isSwapLoading || !fromAmount || !toAmount || fromCurrency === toCurrency
+                                ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
+                    >
+                        {isSwapLoading ? (
+                            <div className="flex items-center justify-center space-x-2">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Processing Swap...</span>
+                            </div>
+                        ) : (
+                            'Swap'
+                        )}
                     </button>
                 </div>
+                
+                    {/* Success Notification */}
+                    {showSuccess && (
+                        <div className="my-4 bg-green-500 text-white p-4 rounded-xl flex items-center space-x-2">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium">Swap completed successfully!</span>
+                        </div>
+                    )}
             </div>
+            
         </div>
     );
 }

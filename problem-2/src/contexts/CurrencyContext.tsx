@@ -1,39 +1,9 @@
-import React, { createContext, useContext, useLayoutEffect, useState, ReactNode } from 'react';
-
-// Types for currency data
-export interface CurrencyPrice {
-  currency: string;
-  date: string;
-  price: number;
-}
-
-export interface Currency {
-  symbol: string;
-  name: string;
-  price: number;
-  lastUpdated: string;
-}
-
-export interface ExchangeRate {
-  from: string;
-  to: string;
-  rate: number;
-  fromPrice: number;
-  toPrice: number;
-}
-
-interface CurrencyContextType {
-  currencies: Currency[];
-  exchangeRates: ExchangeRate[];
-  isLoading: boolean;
-  error: string | null;
-  getCurrencyBySymbol: (symbol: string) => Currency | undefined;
-  getExchangeRate: (from: string, to: string) => number | null;
-  refreshPrices: () => Promise<void>;
-}
+import React, { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react';
+import { type CurrencyPrice, type Currency, type ExchangeRate, type CurrencyContextType } from '../types/CurrencyContext';
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCurrency = () => {
   const context = useContext(CurrencyContext);
   if (!context) {
@@ -52,7 +22,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch currency prices from API
+
   const fetchCurrencyPrices = async (): Promise<CurrencyPrice[]> => {
     try {
       const response = await fetch('https://interview.switcheo.com/prices.json');
@@ -66,11 +36,9 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     }
   };
 
-  // Process currency prices and create currency objects
   const processCurrencyPrices = (prices: CurrencyPrice[]): Currency[] => {
     const currencyMap = new Map<string, CurrencyPrice>();
     
-    // Get the latest price for each currency
     prices.forEach(price => {
       const existing = currencyMap.get(price.currency);
       if (!existing || new Date(price.date) > new Date(existing.date)) {
@@ -80,13 +48,12 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
 
     return Array.from(currencyMap.values()).map(price => ({
       symbol: price.currency,
-      name: price.currency, // You can extend this with full names if needed
+      name: price.currency,
       price: price.price,
       lastUpdated: price.date
     }));
   };
 
-  // Calculate exchange rates between all currency pairs
   const calculateExchangeRates = (currencies: Currency[]): ExchangeRate[] => {
     const rates: ExchangeRate[] = [];
     
@@ -111,7 +78,6 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     return rates;
   };
 
-  // Initialize currency data
   const initializeCurrencyData = async () => {
     try {
       setIsLoading(true);
@@ -131,17 +97,14 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     }
   };
 
-  // Refresh prices
   const refreshPrices = async () => {
     await initializeCurrencyData();
   };
 
-  // Get currency by symbol
   const getCurrencyBySymbol = (symbol: string): Currency | undefined => {
     return currencies.find(currency => currency.symbol === symbol);
   };
 
-  // Get exchange rate between two currencies
   const getExchangeRate = (from: string, to: string): number | null => {
     const rate = exchangeRates.find(
       r => r.from === from && r.to === to
@@ -149,10 +112,9 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
     return rate ? rate.rate : null;
   };
 
-  // Use useLayoutEffect to fetch data before DOM mount
   useLayoutEffect(() => {
     initializeCurrencyData();
-  }, []);
+  },[]);
 
   const value: CurrencyContextType = {
     currencies,
