@@ -4,6 +4,7 @@ import CurrencySwapForm from './components/CurrencySwapForm'
 import Header from './components/Header'
 import Rates from './components/Rates'
 import History from './components/History'
+import { CurrencyProvider } from './contexts/CurrencyContext'
 
 function App() {
     const [currentPage, setCurrentPage] = useState<'swap' | 'rates' | 'history'>('swap');
@@ -22,10 +23,10 @@ function App() {
     };
 
     return (
-        <>
+        <CurrencyProvider>
             <Header currentPage={currentPage} onPageChange={setCurrentPage} />
             {renderPage()}
-        </>
+        </CurrencyProvider>
     )
 }
 

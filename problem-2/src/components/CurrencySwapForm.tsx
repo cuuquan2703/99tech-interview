@@ -1,28 +1,38 @@
-import React, { useState } from 'react';
-
-interface Currency {
-    symbol: string;
-    name: string;
-    icon: string;
-    balance: number;
-    usdValue: number;
-}
-
-const currencies: Currency[] = [
-    { symbol: 'BUSD', name: 'Binance USD', icon: '🟡', balance: 10345.28, usdValue: 10345.28 },
-    { symbol: 'ETH', name: 'Ethereum', icon: '🔵', balance: 5.42, usdValue: 10840.00 },
-    { symbol: 'MATIC', name: 'Polygon', icon: '🟣', balance: 11892.74, usdValue: 984.16 },
-    { symbol: 'BTC', name: 'Bitcoin', icon: '🟠', balance: 0.25, usdValue: 12500.00 },
-    { symbol: 'USDC', name: 'USD Coin', icon: '🔵', balance: 5000.00, usdValue: 5000.00 },
-];
+import React, { useState, useEffect } from 'react';
+import { useCurrency } from '../contexts/CurrencyContext';
+import { TokenDisplay, TokenSelector } from './IconAssets';
 
 function CurrencySwapForm() {
-    const [fromCurrency, setFromCurrency] = useState<Currency>(currencies[0]);
-    const [toCurrency, setToCurrency] = useState<Currency>(currencies[2]);
-    const [fromAmount, setFromAmount] = useState('1945.58');
-    const [toAmount, setToAmount] = useState('842.31');
+    const { currencies, getExchangeRate, isLoading, error } = useCurrency();
+    const [fromCurrency, setFromCurrency] = useState<string>('');
+    const [toCurrency, setToCurrency] = useState<string>('');
+    const [fromAmount, setFromAmount] = useState('');
+    const [toAmount, setToAmount] = useState('');
     const [showFromDropdown, setShowFromDropdown] = useState(false);
     const [showToDropdown, setShowToDropdown] = useState(false);
+
+    // Set default currencies when data loads
+    useEffect(() => {
+        if (currencies.length > 0) {
+            if (!fromCurrency) {
+                setFromCurrency(currencies[0].symbol);
+            }
+            if (!toCurrency) {
+                setToCurrency(currencies[1]?.symbol || currencies[0].symbol);
+            }
+        }
+    }, [currencies, fromCurrency, toCurrency]);
+
+    // Calculate conversion when currencies or amount changes
+    useEffect(() => {
+        if (fromCurrency && toCurrency && fromAmount && fromCurrency !== toCurrency) {
+            const rate = getExchangeRate(fromCurrency, toCurrency);
+            if (rate !== null) {
+                const numValue = parseFloat(fromAmount) || 0;
+                setToAmount((numValue * rate).toFixed(6));
+            }
+        }
+    }, [fromCurrency, toCurrency, fromAmount, getExchangeRate]);
 
     const swapCurrencies = () => {
         setFromCurrency(toCurrency);
@@ -33,26 +43,48 @@ function CurrencySwapForm() {
 
     const handleFromAmountChange = (value: string) => {
         setFromAmount(value);
-        // Simple conversion logic (in real app, this would use actual rates)
-        const numValue = parseFloat(value) || 0;
-        const rate = 0.799059; // 1 BUSD = 0.799059 MATIC (example)
-        setToAmount((numValue * rate).toFixed(2));
     };
 
+    const getCurrentRate = () => {
+        if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return null;
+        return getExchangeRate(fromCurrency, toCurrency);
+    };
+
+    const currentRate = getCurrentRate();
     const commission = 2.48;
-    const totalExpected = parseFloat(fromAmount) * fromCurrency.usdValue / 1000 - commission;
+    const fromCurrencyData = currencies.find(c => c.symbol === fromCurrency);
+    const toCurrencyData = currencies.find(c => c.symbol === toCurrency);
+    
+    const totalExpected = fromCurrencyData && fromAmount 
+        ? parseFloat(fromAmount) * fromCurrencyData.price - commission 
+        : 0;
     const leastAmount = totalExpected * 0.99; // 1% slippage
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <div className="text-white text-xl">Loading currency data...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <div className="text-red-400 text-xl">Error: {error}</div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-700">
                     {/* From Currency */}
-                    <div className="bg-gray-700 rounded-xl p-4 mb-4">
+                    <div className="bg-gray-700 rounded-xl p-4 mb-4 relative">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
-                                <span className="text-2xl">{fromCurrency.icon}</span>
-                                <span className="text-white font-medium">{fromCurrency.symbol}</span>
+                                <TokenDisplay token={fromCurrency} showPrice={true} />
                                 <button
                                     onClick={() => setShowFromDropdown(!showFromDropdown)}
                                     className="text-gray-400 hover:text-white transition-colors"
@@ -61,8 +93,10 @@ function CurrencySwapForm() {
                                 </button>
                             </div>
                             <div className="text-right">
-                                <div className="text-gray-400 text-sm">Bal. {fromCurrency.balance.toLocaleString()} {fromCurrency.symbol}</div>
-                                <div className="text-gray-300 text-sm">${fromCurrency.usdValue.toLocaleString()}</div>
+                                <div className="text-gray-400 text-sm">Balance</div>
+                                <div className="text-gray-300 text-sm">
+                                    {fromCurrencyData ? `$${fromCurrencyData.price.toFixed(6)}` : 'N/A'}
+                                </div>
                             </div>
                         </div>
                         <input
@@ -75,19 +109,17 @@ function CurrencySwapForm() {
 
                         {/* From Currency Dropdown */}
                         {showFromDropdown && (
-                            <div className="absolute mt-2 bg-gray-700 rounded-lg border border-gray-600 shadow-lg z-10 w-48">
+                            <div className="absolute mt-2 bg-gray-700 rounded-lg border border-gray-600 shadow-lg z-10 w-48 max-h-60 overflow-y-auto">
                                 {currencies.map((currency) => (
                                     <div
                                         key={currency.symbol}
                                         onClick={() => {
-                                            setFromCurrency(currency);
+                                            setFromCurrency(currency.symbol);
                                             setShowFromDropdown(false);
                                         }}
                                         className="flex items-center space-x-3 p-3 hover:bg-gray-600 cursor-pointer rounded-lg"
                                     >
-                                        <span className="text-xl">{currency.icon}</span>
-                                        <span className="text-white">{currency.symbol}</span>
-                                        <span className="text-gray-400 text-sm">{currency.name}</span>
+                                        <TokenDisplay token={currency.symbol} showPrice={true} />
                                     </div>
                                 ))}
                             </div>
@@ -105,11 +137,10 @@ function CurrencySwapForm() {
                     </div>
 
                     {/* To Currency */}
-                    <div className="bg-gray-700 rounded-xl p-4 mb-6">
+                    <div className="bg-gray-700 rounded-xl p-4 mb-6 relative">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
-                                <span className="text-2xl">{toCurrency.icon}</span>
-                                <span className="text-white font-medium">{toCurrency.symbol}</span>
+                                <TokenDisplay token={toCurrency} showPrice={true} />
                                 <button
                                     onClick={() => setShowToDropdown(!showToDropdown)}
                                     className="text-gray-400 hover:text-white transition-colors"
@@ -118,29 +149,29 @@ function CurrencySwapForm() {
                                 </button>
                             </div>
                             <div className="text-right">
-                                <div className="text-gray-400 text-sm">Bal. {toCurrency.balance.toLocaleString()} {toCurrency.symbol}</div>
-                                <div className="text-gray-300 text-sm">${toCurrency.usdValue.toLocaleString()}</div>
+                                <div className="text-gray-400 text-sm">Balance</div>
+                                <div className="text-gray-300 text-sm">
+                                    {toCurrencyData ? `$${toCurrencyData.price.toFixed(6)}` : 'N/A'}
+                                </div>
                             </div>
                         </div>
                         <div className="text-3xl font-bold text-white">
-                            {toAmount}
+                            {toAmount || '0.00'}
                         </div>
 
                         {/* To Currency Dropdown */}
                         {showToDropdown && (
-                            <div className="absolute mt-2 bg-gray-700 rounded-lg border border-gray-600 shadow-lg z-10 w-48">
+                            <div className="absolute mt-2 bg-gray-700 rounded-lg border border-gray-600 shadow-lg z-10 w-48 max-h-60 overflow-y-auto">
                                 {currencies.map((currency) => (
                                     <div
                                         key={currency.symbol}
                                         onClick={() => {
-                                            setToCurrency(currency);
+                                            setToCurrency(currency.symbol);
                                             setShowToDropdown(false);
                                         }}
                                         className="flex items-center space-x-3 p-3 hover:bg-gray-600 cursor-pointer rounded-lg"
                                     >
-                                        <span className="text-xl">{currency.icon}</span>
-                                        <span className="text-white">{currency.symbol}</span>
-                                        <span className="text-gray-400 text-sm">{currency.name}</span>
+                                        <TokenDisplay token={currency.symbol} showPrice={true} />
                                     </div>
                                 ))}
                             </div>
@@ -151,7 +182,12 @@ function CurrencySwapForm() {
                     <div className="space-y-3 mb-6">
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Conversion Rate</span>
-                            <span className="text-white">1 {fromCurrency.symbol} = 0.799059 {toCurrency.symbol}</span>
+                            <span className="text-white">
+                                {currentRate 
+                                    ? `1 ${fromCurrency} = ${currentRate.toFixed(6)} ${toCurrency}`
+                                    : 'N/A'
+                                }
+                            </span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Commission</span>

@@ -1,47 +1,73 @@
-# Currency Swap Form
+# Currency Exchange Application
 
-A modern, responsive cryptocurrency swap interface built with React, TypeScript, and Tailwind CSS.
+A React-based cryptocurrency exchange application with real-time price data and exchange rate calculations.
 
 ## Features
 
-- **Glassmorphism Design**: Modern, translucent UI with backdrop blur effects
-- **Dual Pane Layout**: 
-  - Left pane: Swap form with currency inputs
-  - Right pane: Exchange rates display (toggleable)
-- **Responsive Design**: Optimized for various screen sizes
-- **Interactive Elements**: Hover effects, smooth transitions, and animations
-- **Real-time Calculations**: Dynamic conversion rates and fee calculations
+- **Real-time Currency Data**: Fetches live cryptocurrency prices from the Switcheo API
+- **Global State Management**: Uses React Context for centralized currency state management
+- **Exchange Rate Calculator**: Computes conversion rates between all available currency pairs
+- **Token Icons**: Displays proper cryptocurrency icons with fallback support
+- **Responsive Design**: Modern UI with Tailwind CSS styling
 
-## UI Components
+## Architecture
 
-### Swap Form
-- Two currency input fields (From/To)
-- Currency selection with dropdown indicators
-- Balance display for each currency
-- USD value equivalents
-- Transaction details (conversion rate, fees, slippage)
-- Action button (Connect Wallet/Swap Now)
+### Currency Context (`src/contexts/CurrencyContext.tsx`)
 
-### Exchange Rates Pane
-- Toggleable sidebar showing current exchange rates
-- 24-hour price change indicators
-- Smooth expand/collapse animation
-- Multiple currency pair displays
+The application uses React Context to manage global currency state:
 
-## Design Features
+- **Data Fetching**: Uses `useLayoutEffect` to fetch currency data before DOM mount
+- **API Integration**: Connects to `https://interview.switcheo.com/prices.json` for live price data
+- **Exchange Rate Calculation**: Automatically computes rates between all currency pairs
+- **State Management**: Provides loading states, error handling, and data refresh capabilities
 
-- **Glassmorphism**: Semi-transparent backgrounds with backdrop blur
-- **Modern Borders**: Subtle white borders with transparency
-- **Gradient Backgrounds**: Dark theme with purple accents
-- **Smooth Animations**: Hover effects and transitions
-- **Responsive Layout**: Flexbox-based responsive design
+### Key Components
 
-## Technologies Used
+#### IconAssets (`src/components/IconAssets.tsx`)
+- `TokenIcon`: Displays cryptocurrency icons with fallback to initials
+- `TokenDisplay`: Shows token icon, name, and optional price
+- `TokenSelector`: Interactive token selection component
 
-- React 19
-- TypeScript
-- Tailwind CSS
-- Vite (Build tool)
+#### CurrencySwapForm (`src/components/CurrencySwapForm.tsx`)
+- Real-time currency conversion calculator
+- Dynamic exchange rate updates
+- Token selection dropdowns with live data
+- Commission and slippage calculations
+
+#### Rates (`src/components/Rates.tsx`)
+- Comprehensive exchange rate table
+- Search and filtering capabilities
+- Sort by rate or volume
+- Currency overview grid
+
+#### Header (`src/components/Header.tsx`)
+- Navigation between application sections
+- Real-time status indicator
+- Manual refresh functionality
+
+## Data Flow
+
+1. **Initialization**: `useLayoutEffect` triggers API call on component mount
+2. **Data Processing**: Raw API data is processed to extract latest prices per currency
+3. **Rate Calculation**: Exchange rates are computed for all currency pairs
+4. **State Distribution**: Data is distributed to components via Context
+5. **Real-time Updates**: Components automatically update when data changes
+
+## API Integration
+
+The application integrates with the Switcheo API endpoint:
+- **URL**: `https://interview.switcheo.com/prices.json`
+- **Data Format**: JSON array of currency price objects
+- **Update Frequency**: Data is fetched on mount and can be manually refreshed
+- **Error Handling**: Graceful fallbacks for network issues and API errors
+
+## Currency Support
+
+The application supports a wide range of cryptocurrencies including:
+- Major tokens: BTC, ETH, USDC, USDT, BNB
+- DeFi tokens: AAVE, UNI, COMP, SNX
+- Layer 1 tokens: SOL, ADA, DOT, NEAR
+- And many more with automatic icon support
 
 ## Getting Started
 
@@ -55,30 +81,28 @@ A modern, responsive cryptocurrency swap interface built with React, TypeScript,
    npm run dev
    ```
 
-3. Open your browser and navigate to the local development URL
+3. Open your browser and navigate to the application
 
-## Project Structure
+## Technical Details
 
-```
-src/
-├── components/
-│   └── CurrencySwapForm.tsx    # Main swap form component
-├── App.tsx                      # Main application component
-├── App.css                      # Application styles
-└── index.css                    # Global styles with Tailwind
-```
+- **Framework**: React 18 with TypeScript
+- **State Management**: React Context + Hooks
+- **Styling**: Tailwind CSS
+- **Build Tool**: Vite
+- **Data Fetching**: Native fetch API with useLayoutEffect
+- **Error Handling**: Comprehensive error states and user feedback
 
-## Customization
+## Performance Features
 
-The component is built with TypeScript interfaces, making it easy to:
-- Modify currency data structures
-- Add new currency pairs
-- Customize exchange rate calculations
-- Implement real API integrations
-- Adjust styling and themes
+- **Efficient Data Processing**: Deduplication of API responses
+- **Optimized Re-renders**: Context optimization for minimal component updates
+- **Lazy Loading**: Currency data loaded only when needed
+- **Memory Management**: Proper cleanup of API calls and state
 
-## Browser Support
+## Future Enhancements
 
-- Modern browsers with ES2022 support
-- CSS backdrop-filter support for glassmorphism effects
-- Responsive design for mobile and desktop
+- WebSocket integration for real-time price updates
+- Historical price charts and analytics
+- Portfolio management features
+- Advanced trading functionality
+- Mobile app optimization
